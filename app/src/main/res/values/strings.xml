@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">RainOrNot</string>
+    <string name="noLocationPermission">App does not have location permission</string>
+    <string name="locationVariableIsNull">Unfortunately Location Variable is NULL</string>
+</resources>
