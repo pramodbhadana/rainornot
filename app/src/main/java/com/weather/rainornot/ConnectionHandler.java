@@ -1,4 +1,4 @@
-package com.weather.rainornot.rainornot;
+package com.weather.rainornot;
 
 import android.util.Log;
 

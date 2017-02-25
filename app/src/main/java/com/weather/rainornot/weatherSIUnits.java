@@ -1,4 +1,4 @@
-package com.weather.rainornot.rainornot;
+package com.weather.rainornot;
 
 /**
  * Created by pramodbhadana on 11/12/16" ;

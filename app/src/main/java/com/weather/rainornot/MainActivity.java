@@ -1,5 +1,7 @@
-package com.weather.rainornot.rainornot;
+package com.weather.rainornot;
 
+import android.app.SearchManager;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.AsyncTask;
@@ -9,6 +11,8 @@ import android.support.v4.content.ContextCompat;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.SearchView;
+import android.view.Menu;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -18,6 +22,8 @@ import android.util.Log;
 
 import com.afollestad.materialdialogs.DialogAction;
 import com.afollestad.materialdialogs.MaterialDialog;
+import com.daimajia.androidanimations.library.Techniques;
+import com.daimajia.androidanimations.library.YoYo;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -41,7 +47,9 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private TextView mLongitudeTextView;
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final String weatherKey = "***REMOVED***";
+    private static final String googleApiKey = "***REMOVED***";
     private static final String weatherQueryURLPrefix = "https://api.darksky.net/forecast";
+    private static final String googleApiURLPrefix = "";
     private String weatherQueryURL = null;
 
     private Object time;
@@ -58,6 +66,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
     private LinearLayout mainLinearLayout;
 
+    private LinearLayout mWeatherImageLinearLayout;
+
     //private LinearLayout linearLayoutHeaderProgress;
 
     private SwipeRefreshLayout swipeRefreshLayout;
@@ -65,6 +75,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private ImageView mPoweredByDarkSkyImageView;
 
     private static final int LOCATION_REQUEST_ID = 0;
+
+    private Menu menu;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -102,6 +114,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
         mPoweredByDarkSkyImageView = (ImageView)findViewById(R.id.poweredByDarkSkyImageView);
 
+        mWeatherImageLinearLayout = (LinearLayout)findViewById(R.id.weatherImageLinearLayout);
+
         if(isNight())
         {
             // set light background for night
@@ -111,13 +125,15 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             // set dark background for the day
         }
 
-        mPoweredByDarkSkyImageView.setImageResource(R.drawable.powered_by_darksky_light_oneline);
+        if(mPoweredByDarkSkyImageView!=null) {
+            mPoweredByDarkSkyImageView.setImageResource(R.drawable.powered_by_darksky_light_oneline);
+        }
 
 
 
         //linearLayoutHeaderProgress = (LinearLayout) findViewById(R.id.linearLayoutHeaderProgress);
 
-        mainLinearLayout.setBackgroundColor(new BigInteger("90caf9",32).intValue());
+        mainLinearLayout.setBackgroundColor(new BigInteger("4fc3f7",32).intValue());
 
             if (checkPlayServices()) {
                 if (mGoogleApiClient == null) {
@@ -128,6 +144,20 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                             .build();
                 }
             }
+
+        mWeatherImageLinearLayout.setOnClickListener(
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        YoYo.with(Techniques.Tada)
+                                .duration(1000)
+                                .playOn(v);
+                    }
+                }
+        );
+
+        //hiding app name from the action bar
+        getSupportActionBar().setDisplayShowTitleEnabled(false);
 
     }
     @Override
@@ -404,6 +434,10 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         LogIt("Value of Resource Id : "+String.valueOf(resId));
         LogIt("Icon : "+icon.toString()+" drawable converted : "+mapIconToDrawable(icon.toString()));
         mWeatherIconImageView.setImageResource(resId);
+        YoYo.with(Techniques.Tada)
+                .duration(1000)
+                .playOn(mWeatherIconImageView);
+
     }
 
     String mapIconToDrawable(String icon)
@@ -444,7 +478,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 drawable = "fog";
                 break;
             case "partly-cloudy-day":
-                drawable = "few_clouds";
+                drawable = "few_clouds_day";
                 break;
             case "partly-cloudy-night":
                 drawable = "few_clouds_night";
@@ -460,6 +494,40 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         Calendar cal = Calendar.getInstance();
         int hour = cal.get(Calendar.HOUR_OF_DAY);
         return hour < 6 || hour > 18;
+    }
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu)
+    {
+        getMenuInflater().inflate(R.menu.searchcityitem,menu);
+
+        this.menu = menu;
+
+        SearchManager manager = (SearchManager) getSystemService(Context.SEARCH_SERVICE);
+
+        SearchView search = (SearchView) menu.findItem(R.id.search).getActionView();
+
+        search.setSearchableInfo(manager.getSearchableInfo(getComponentName()));
+
+        search.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+
+            @Override
+            public boolean onQueryTextChange(String query) {
+
+                //loadHistory(query);
+
+                return true;
+
+            }
+            @Override
+            public boolean onQueryTextSubmit(String query)
+            {
+                return true;
+            }
+
+        });
+
+    return true;
+
     }
 
 }
