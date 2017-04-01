@@ -3,12 +3,15 @@ package com.weather.rainornot;
 import android.app.SearchManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.os.AsyncTask;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.widget.SwipeRefreshLayout;
+import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.SearchView;
@@ -32,8 +35,11 @@ import com.google.android.gms.location.LocationServices;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.math.BigInteger;
 import java.util.Calendar;
+import java.util.List;
+import java.util.Locale;
 
 
 public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
@@ -41,8 +47,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
     private GoogleApiClient mGoogleApiClient;
     private Location mLastLocation;
-    private double mLatitude;
-    private double mLongitude;
+    private double mLatitude = 0;
+    private double mLongitude = 0;
     private TextView mLatitudeTextView;
     private TextView mLongitudeTextView;
     private static final String TAG = MainActivity.class.getSimpleName();
@@ -51,6 +57,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private static final String weatherQueryURLPrefix = "https://api.darksky.net/forecast";
     private static final String googleApiURLPrefix = "";
     private String weatherQueryURL = null;
+    private ActionBar mActionBar = null;
+    private String address = null;
 
     private Object time;
     private Object summary;
@@ -156,8 +164,11 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 }
         );
 
+        mActionBar = getSupportActionBar();
         //hiding app name from the action bar
-        getSupportActionBar().setDisplayShowTitleEnabled(false);
+        if(mActionBar != null) {
+            mActionBar.setDisplayShowTitleEnabled(true);
+        }
 
     }
     @Override
@@ -190,12 +201,14 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     @Override
     protected void onStart()
     {
+        if(mGoogleApiClient != null)
         mGoogleApiClient.connect();
         super.onStart();
     }
     @Override
     protected void onStop()
     {
+        if(mGoogleApiClient != null)
         mGoogleApiClient.disconnect();
         super.onStop();
     }
@@ -394,6 +407,11 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                     ozone = currentWeatherObject.get("ozone");
                     */
 
+                    String addressInternal = getAddress();
+                    //showToast("here is the address "+address,"long");   **don't show toast from Async task. Context value won't be there
+                    address = addressInternal;
+                    LogIt(address);
+
                 } catch (JSONException e) {
                     Log.e(TAG, "JSONException : ", e.getCause());
                     runOnUiThread(new Runnable() {
@@ -422,6 +440,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             super.onPostExecute(result);
             //linearLayoutHeaderProgress.setVisibility(View.INVISIBLE);
             updateUIElements();
+            mActionBar.setTitle(address);
             swipeRefreshLayout.setRefreshing(false);
         }
     }
@@ -437,6 +456,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         YoYo.with(Techniques.Tada)
                 .duration(1000)
                 .playOn(mWeatherIconImageView);
+        showToast(address,"long");
 
     }
 
@@ -528,6 +548,31 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
     return true;
 
+    }
+    String getAddress()
+    {
+        StringBuilder result = new StringBuilder();
+        try
+        {
+            Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+            List<Address> addresses = geocoder.getFromLocation(mLatitude,mLongitude,1);
+            if(addresses.size() > 0)
+            {
+                Address address = addresses.get(0);
+                result.append(address.getLocality()).append(", ");
+                result.append(address.getAdminArea()).append(", ");
+                result.append(address.getCountryName());
+            }
+        }
+        catch (IOException e)
+        {
+            LogIt("IOException :"+e.getMessage());
+        }
+        catch (IllegalArgumentException e)
+        {
+
+        }
+        return result.toString();
     }
 
 }
