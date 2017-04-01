@@ -6,6 +6,8 @@ import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -25,6 +27,7 @@ import android.util.Log;
 
 import com.afollestad.materialdialogs.DialogAction;
 import com.afollestad.materialdialogs.MaterialDialog;
+import com.airbnb.lottie.LottieAnimationView;
 import com.daimajia.androidanimations.library.Techniques;
 import com.daimajia.androidanimations.library.YoYo;
 import com.google.android.gms.common.ConnectionResult;
@@ -82,6 +85,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
     private ImageView mPoweredByDarkSkyImageView;
 
+    private LottieAnimationView lottieAnimationView;
+
     private static final int LOCATION_REQUEST_ID = 0;
 
     private Menu menu;
@@ -89,6 +94,16 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        if(!isNetworkAvailable())
+        {
+            setContentView(R.layout.activity_no_network);
+            lottieAnimationView = (LottieAnimationView) findViewById(R.id.animation_view);
+            lottieAnimationView.setAnimation("rey_updated!.json");
+            lottieAnimationView.playAnimation();
+            return;
+        }
+
         setContentView(R.layout.activity_main);
 
         mLatitudeTextView = (TextView)findViewById(R.id.lattitudeTextView);
@@ -573,6 +588,13 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
         }
         return result.toString();
+    }
+    boolean isNetworkAvailable()
+    {
+        ConnectivityManager connectivityManager
+                = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+        return activeNetworkInfo != null && activeNetworkInfo.isConnectedOrConnecting();
     }
 
 }

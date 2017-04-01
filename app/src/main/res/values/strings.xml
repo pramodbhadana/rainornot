@@ -3,4 +3,5 @@
     <string name="noLocationPermission">App does not have location permission</string>
     <string name="locationVariableIsNull">Unfortunately Location Variable is NULL</string>
     <string name="searchCity">Search your City</string>
+    <string name="no_network">Seems no network is available.Try connecting and hit refresh</string>
 </resources>
