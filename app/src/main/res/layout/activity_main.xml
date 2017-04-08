@@ -6,123 +6,55 @@
     android:layout_height="match_parent"
     android:id="@+id/mainLinearLayout"
     android:orientation="vertical"
-    tools:context="com.weather.rainornot.rainornot.MainActivity">
-    <LinearLayout
+    tools:context="com.weather.rainornot.MainActivity">
+    <android.support.design.widget.CoordinatorLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="4">
-    <android.support.v4.widget.SwipeRefreshLayout
-        xmlns:android="http://schemas.android.com/apk/res/android"
-        android:id="@+id/swiperefresh"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        >
-        <!--
-    <LinearLayout
-        android:id="@+id/linearLayoutHeaderProgress"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:gravity="center"
-        android:orientation="vertical"
-        >
-
-    <ProgressBar
-        android:id="@+id/pbHeaderProgress"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content" >
-    </ProgressBar>
-    </LinearLayout>
-    -->
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:weightSum="4"
-        android:clickable="true">
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:orientation="horizontal">
-            <TextView
-                android:text="longitude"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:id="@+id/longitudeTextView"
-                />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Hello World!"
-                android:id="@+id/lattitudeTextView"
-                />
-        </LinearLayout>
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="2"
-            android:orientation="horizontal"
-            android:weightSum="3"
-            >
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="2">
-                <ImageView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:srcCompat="@color/colorAccent"
-                    android:id="@+id/weatherIconImageView" />
-            </LinearLayout>
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:text="TextView"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:id="@+id/temperatureTextview"
-                    />
-
-                <TextView
-                    android:text="TextView"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:id="@+id/apparentTemperatureTextView"
-                    />
-
-            </LinearLayout>
-            </LinearLayout>
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1">
-            <TextView
-                android:text="TextView"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:id="@+id/summaryTextView" />
-        </LinearLayout>
-
-
-
-        </LinearLayout>
-    </android.support.v4.widget.SwipeRefreshLayout>
-    </LinearLayout>
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:id="@+id/poweredByDarkSkyLinearLayout"
-        android:orientation="vertical"
-        android:layout_weight="1">
-        <ImageView
+        android:layout_height="wrap_content">
+        <android.support.v4.widget.SwipeRefreshLayout
+            xmlns:android="http://schemas.android.com/apk/res/android"
+            android:id="@+id/swiperefresh"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:id="@+id/poweredByDarkSkyImageView"/>
-    </LinearLayout>
+            >
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:orientation="vertical">
+                <com.weather.rainornot.customFontTextView
+                    android:id="@+id/userLocationTextView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Your location"
+                    android:gravity="center" />
+                <LinearLayout
+                    android:id="@+id/weatherImageLinearLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="80dp">
+                    <ImageView
+                        android:id="@+id/weatherIconImageView"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent" />
+                </LinearLayout>
+                <com.weather.rainornot.customFontTextView
+                    android:id="@+id/temperatureTextView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:text="Temperature" />
+                <com.weather.rainornot.customFontTextView
+                    android:id="@+id/apparentTemperatureTextView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="Apparent temperature" />
+                <com.weather.rainornot.customFontTextView
+                    android:id="@+id/summaryTextView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="Summary" />
+            </LinearLayout>
+        </android.support.v4.widget.SwipeRefreshLayout>
 </LinearLayout>

@@ -21,7 +21,6 @@ import android.view.Menu;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 import android.widget.Toast;
 import android.util.Log;
 
@@ -52,8 +51,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private Location mLastLocation;
     private double mLatitude = 0;
     private double mLongitude = 0;
-    private TextView mLatitudeTextView;
-    private TextView mLongitudeTextView;
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final String weatherKey = "***REMOVED***";
     private static final String googleApiKey = "***REMOVED***";
@@ -62,6 +59,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private String weatherQueryURL = null;
     private ActionBar mActionBar = null;
     private String address = null;
+    private boolean jsonError = false;
 
     private Object time;
     private Object summary;
@@ -69,21 +67,17 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private Object temperature;
     private Object apparentTemperature;
 
-    private TextView mTemperatureTextView;
-    private TextView mApparentTemperatureTextView;
-    private TextView mSummaryTextView;
+    private customFontTextView mUserLocationTextView;
+    private customFontTextView mTemperatureTextView;
+    private customFontTextView mApparentTemperatureTextView;
+    private customFontTextView mSummaryTextView;
 
     private ImageView mWeatherIconImageView;
 
     private LinearLayout mainLinearLayout;
-
     private LinearLayout mWeatherImageLinearLayout;
 
-    //private LinearLayout linearLayoutHeaderProgress;
-
     private SwipeRefreshLayout swipeRefreshLayout;
-
-    private ImageView mPoweredByDarkSkyImageView;
 
     private LottieAnimationView lottieAnimationView;
 
@@ -106,15 +100,11 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
         setContentView(R.layout.activity_main);
 
-        mLatitudeTextView = (TextView)findViewById(R.id.lattitudeTextView);
-        mLongitudeTextView = (TextView)findViewById(R.id.longitudeTextView);
+        mUserLocationTextView = (customFontTextView)findViewById(R.id.userLocationTextView);
 
-        mLatitudeTextView.setVisibility(View.INVISIBLE);
-        mLongitudeTextView.setVisibility(View.INVISIBLE);
-
-        mTemperatureTextView = (TextView)findViewById(R.id.temperatureTextview);
-        mApparentTemperatureTextView = (TextView)findViewById(R.id.apparentTemperatureTextView);
-        mSummaryTextView = (TextView)findViewById(R.id.summaryTextView);
+        mTemperatureTextView = (customFontTextView)findViewById(R.id.temperatureTextView);
+        mApparentTemperatureTextView = (customFontTextView)findViewById(R.id.apparentTemperatureTextView);
+        mSummaryTextView = (customFontTextView)findViewById(R.id.summaryTextView);
 
         mWeatherIconImageView = (ImageView) findViewById(R.id.weatherIconImageView);
 
@@ -135,8 +125,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 }
         );
 
-        mPoweredByDarkSkyImageView = (ImageView)findViewById(R.id.poweredByDarkSkyImageView);
-
         mWeatherImageLinearLayout = (LinearLayout)findViewById(R.id.weatherImageLinearLayout);
 
         if(isNight())
@@ -148,25 +136,17 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             // set dark background for the day
         }
 
-        if(mPoweredByDarkSkyImageView!=null) {
-            mPoweredByDarkSkyImageView.setImageResource(R.drawable.powered_by_darksky_light_oneline);
-        }
+        //mainLinearLayout.setBackgroundColor(new BigInteger("4fc3f7",32).intValue());
 
-
-
-        //linearLayoutHeaderProgress = (LinearLayout) findViewById(R.id.linearLayoutHeaderProgress);
-
-        mainLinearLayout.setBackgroundColor(new BigInteger("4fc3f7",32).intValue());
-
-            if (checkPlayServices()) {
-                if (mGoogleApiClient == null) {
-                    mGoogleApiClient = new GoogleApiClient.Builder(this)
-                            .addConnectionCallbacks(this)
-                            .addOnConnectionFailedListener(this)
-                            .addApi(LocationServices.API)
-                            .build();
-                }
+        if (checkPlayServices()) {
+            if (mGoogleApiClient == null) {
+                mGoogleApiClient = new GoogleApiClient.Builder(this)
+                        .addConnectionCallbacks(this)
+                        .addOnConnectionFailedListener(this)
+                        .addApi(LocationServices.API)
+                        .build();
             }
+        }
 
         mWeatherImageLinearLayout.setOnClickListener(
                 new View.OnClickListener() {
@@ -208,25 +188,29 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 }
         }
     }
+
     @Override
     protected void onResume()
     {
         super.onResume();
     }
+
     @Override
     protected void onStart()
     {
         if(mGoogleApiClient != null)
-        mGoogleApiClient.connect();
+            mGoogleApiClient.connect();
         super.onStart();
     }
+
     @Override
     protected void onStop()
     {
         if(mGoogleApiClient != null)
-        mGoogleApiClient.disconnect();
+            mGoogleApiClient.disconnect();
         super.onStop();
     }
+
     @Override
     public void onConnected(Bundle connectionHint)
     {
@@ -238,8 +222,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             {
                 mLatitude = mLastLocation.getLatitude();
                 mLongitude = mLastLocation.getLongitude();
-                mLatitudeTextView.setText(String.valueOf(mLatitude));
-                mLongitudeTextView.setText(String.valueOf(mLongitude));
                 fetchWeatherInformation();
             }
             else
@@ -279,22 +261,26 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             }
         }
     }
+
     void requestPermission(String permission[], int requestId)
     {
         ActivityCompat.requestPermissions(this,permission,requestId);
     }
+
     @Override
     public void onConnectionSuspended(int i)
     {
         LogIt("in onConnectionSuspended");
         showToast("in onConnectionSuspended","long");
     }
+
     @Override
     public void onConnectionFailed(ConnectionResult mConnectionResult)
     {
         LogIt("in onConnectionFailed");
         showToast("in onConnectionFailed","long");
     }
+
     public Boolean checkPermission(String mPermission)
     {
         return ContextCompat.checkSelfPermission(this,mPermission)== PackageManager.PERMISSION_GRANTED;
@@ -380,7 +366,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         {
             swipeRefreshLayout.setRefreshing(true);
             super.onPreExecute();
-            //linearLayoutHeaderProgress.setVisibility(View.VISIBLE);
         }
         @Override
         protected Void doInBackground(String... weatherUrl)
@@ -428,6 +413,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                     LogIt(address);
 
                 } catch (JSONException e) {
+                    jsonError = true;
                     Log.e(TAG, "JSONException : ", e.getCause());
                     runOnUiThread(new Runnable() {
                         @Override
@@ -439,6 +425,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             }
             else
             {
+                jsonError =true;
                 Log.e(TAG,"Could not get Json from server");
                 runOnUiThread(new Runnable() {
                     @Override
@@ -453,25 +440,26 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         protected void onPostExecute(Void result)
         {
             super.onPostExecute(result);
-            //linearLayoutHeaderProgress.setVisibility(View.INVISIBLE);
-            updateUIElements();
-            mActionBar.setTitle(address);
+            if(!jsonError) {
+                updateUIElements();
+            }
             swipeRefreshLayout.setRefreshing(false);
         }
     }
+
     void updateUIElements()
     {
         mTemperatureTextView.setText(temperature.toString());
-        mApparentTemperatureTextView.setText(apparentTemperature.toString());
+        mApparentTemperatureTextView.setText("Feels like "+apparentTemperature.toString());
         mSummaryTextView.setText(summary.toString());
         int resId = getResources().getIdentifier(mapIconToDrawable(icon.toString()),"drawable",getPackageName());
         LogIt("Value of Resource Id : "+String.valueOf(resId));
         LogIt("Icon : "+icon.toString()+" drawable converted : "+mapIconToDrawable(icon.toString()));
         mWeatherIconImageView.setImageResource(resId);
+        mUserLocationTextView.setText(address);
         YoYo.with(Techniques.Tada)
                 .duration(1000)
                 .playOn(mWeatherIconImageView);
-        showToast(address,"long");
 
     }
 
@@ -524,34 +512,27 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         drawable = "weather_"+drawable;
         return drawable;
     }
+
     Boolean isNight()
     {
         Calendar cal = Calendar.getInstance();
         int hour = cal.get(Calendar.HOUR_OF_DAY);
         return hour < 6 || hour > 18;
     }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu)
     {
         getMenuInflater().inflate(R.menu.searchcityitem,menu);
-
         this.menu = menu;
-
         SearchManager manager = (SearchManager) getSystemService(Context.SEARCH_SERVICE);
-
         SearchView search = (SearchView) menu.findItem(R.id.search).getActionView();
-
         search.setSearchableInfo(manager.getSearchableInfo(getComponentName()));
-
         search.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
-
             @Override
             public boolean onQueryTextChange(String query) {
-
                 //loadHistory(query);
-
                 return true;
-
             }
             @Override
             public boolean onQueryTextSubmit(String query)
@@ -560,10 +541,9 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             }
 
         });
-
-    return true;
-
+        return true;
     }
+
     String getAddress()
     {
         StringBuilder result = new StringBuilder();
@@ -581,14 +561,15 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         }
         catch (IOException e)
         {
-            LogIt("IOException :"+e.getMessage());
+            LogIt("Fetching Address, IOException :"+e.getMessage());
         }
         catch (IllegalArgumentException e)
         {
-
+            LogIt("Fetching Address, :"+e.getMessage());
         }
         return result.toString();
     }
+
     boolean isNetworkAvailable()
     {
         ConnectivityManager connectivityManager
