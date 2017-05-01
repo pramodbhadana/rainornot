@@ -2,6 +2,7 @@ package com.weather.rainornot;
 
 import android.app.SearchManager;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
@@ -10,6 +11,7 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.support.annotation.NonNull;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.widget.SwipeRefreshLayout;
@@ -31,14 +33,20 @@ import com.daimajia.androidanimations.library.Techniques;
 import com.daimajia.androidanimations.library.YoYo;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.android.gms.common.GooglePlayServicesNotAvailableException;
+import com.google.android.gms.common.GooglePlayServicesRepairableException;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.places.Place;
+import com.google.android.gms.location.places.ui.PlaceAutocomplete;
+import com.google.android.gms.maps.model.LatLng;
+import com.weather.rainornot.utils.weatherSIUnits;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
@@ -47,13 +55,15 @@ import java.util.Locale;
 public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener {
 
+    private static final int PLACE_AUTOCOMPLETE_REQUEST_CODE = 1;
     private GoogleApiClient mGoogleApiClient;
     private Location mLastLocation;
     private double mLatitude = 0;
     private double mLongitude = 0;
+    private LatLng mLatLng;
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final String weatherKey = "***REMOVED***";
-    private static final String googleApiKey = "***REMOVED***";
+    private static final String googleApiKey = "AIzaSyCTuMcgGeelhlNK2FWEGUo_fXgEw7fdKT0";
     private static final String weatherQueryURLPrefix = "https://api.darksky.net/forecast";
     private static final String googleApiURLPrefix = "";
     private String weatherQueryURL = null;
@@ -138,6 +148,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
         //mainLinearLayout.setBackgroundColor(new BigInteger("4fc3f7",32).intValue());
 
+        //mainLinearLayout.setBackgroundColor(getResources().getColor(R.color.colorPrimary));
+
         if (checkPlayServices()) {
             if (mGoogleApiClient == null) {
                 mGoogleApiClient = new GoogleApiClient.Builder(this)
@@ -162,10 +174,23 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         mActionBar = getSupportActionBar();
         //hiding app name from the action bar
         if(mActionBar != null) {
-            mActionBar.setDisplayShowTitleEnabled(true);
+            mActionBar.setDisplayShowTitleEnabled(false);
+        }
+
+        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+        if(fab != null) {
+            fab.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                /*Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
+                        .setAction("Action", null).show();*/
+                    callPlaceSearchIntent();
+                }
+            });
         }
 
     }
+
     @Override
     public void onRequestPermissionsResult(int requestCode,
                                            String permissions[], int[] grantResults)
@@ -449,8 +474,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
     void updateUIElements()
     {
-        mTemperatureTextView.setText(temperature.toString());
-        mApparentTemperatureTextView.setText("Feels like "+apparentTemperature.toString());
+        mTemperatureTextView.setText(temperature.toString()+" "+ weatherSIUnits.temperatureSIUnit);
+        mApparentTemperatureTextView.setText("Feels like "+apparentTemperature.toString()+" "+weatherSIUnits.temperatureSIUnit);
         mSummaryTextView.setText(summary.toString());
         int resId = getResources().getIdentifier(mapIconToDrawable(icon.toString()),"drawable",getPackageName());
         LogIt("Value of Resource Id : "+String.valueOf(resId));
@@ -460,6 +485,18 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         YoYo.with(Techniques.Tada)
                 .duration(1000)
                 .playOn(mWeatherIconImageView);
+
+        YoYo.with(Techniques.Swing)
+                .duration(1000)
+                .playOn(mTemperatureTextView);
+
+        YoYo.with(Techniques.Tada)
+                .duration(1000)
+                .playOn(mApparentTemperatureTextView);
+
+        YoYo.with(Techniques.Tada)
+                .duration(1000)
+                .playOn(mSummaryTextView);
 
     }
 
@@ -576,6 +613,38 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
         return activeNetworkInfo != null && activeNetworkInfo.isConnectedOrConnecting();
+    }
+    private void callPlaceSearchIntent() {
+        try {
+            Intent intent =
+                    new PlaceAutocomplete.IntentBuilder(PlaceAutocomplete.MODE_FULLSCREEN)
+                            .build(this);
+            startActivityForResult(intent, PLACE_AUTOCOMPLETE_REQUEST_CODE);
+        } catch (GooglePlayServicesRepairableException | GooglePlayServicesNotAvailableException e) {
+            // TODO: Handle the error.
+        }
+
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        //autocompleteFragment.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == PLACE_AUTOCOMPLETE_REQUEST_CODE) {
+            if (resultCode == RESULT_OK) {
+                Place place = PlaceAutocomplete.getPlace(this, data);
+                mLatLng = place.getLatLng();
+                Log.i(TAG, "Place:" + place.toString());
+                mLatitude = mLatLng.latitude;
+                mLongitude = mLatLng.longitude;
+                fetchWeatherInformation();
+            } else if (resultCode == PlaceAutocomplete.RESULT_ERROR) {
+                Status status = PlaceAutocomplete.getStatus(this, data);
+                Log.i(TAG, status.getStatusMessage());
+            } else if (requestCode == RESULT_CANCELED) {
+                Log.i(TAG, "Request cancelled by User");
+            }
+        }
     }
 
 }
