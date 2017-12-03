@@ -19,6 +19,8 @@ android {
     }
     defaultConfig {
         applicationId "com.weather.rainornot"
+        buildConfigField "String", "DARKSKY_API_KEY", getApiKey("dark_sky_key")
+        resValue "string","GOOGLE_GEO_API_KEY", getApiKey("google_geo_api_key")
     }
     sourceSets { main { java.srcDirs = ['src/main/java', 'src/main/java/utils'] } }
 }
@@ -41,3 +43,11 @@ dependencies {
     compile 'com.airbnb.android:lottie:1.5.3'
     testCompile 'junit:junit:4.12'
 }
+
+//return a MY API KEY from a properties file.
+def getApiKey(String property){
+    Properties properties = new Properties()
+    properties.load(new FileInputStream("/Users/pramodbhadana/AndroidStudioProjects/RainOrNot/privateKeys.txt"))
+    return "\"" + properties.getProperty(property) +"\""
+}
+

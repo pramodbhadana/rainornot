@@ -62,10 +62,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private double mLongitude = 0;
     private LatLng mLatLng;
     private static final String TAG = MainActivity.class.getSimpleName();
-    private static final String weatherKey = "***REMOVED***";
-    private static final String googleApiKey = "AIzaSyCTuMcgGeelhlNK2FWEGUo_fXgEw7fdKT0";
+    private static final String weatherKey = BuildConfig.DARKSKY_API_KEY;
     private static final String weatherQueryURLPrefix = "https://api.darksky.net/forecast";
-    private static final String googleApiURLPrefix = "";
     private String weatherQueryURL = null;
     private ActionBar mActionBar = null;
     private String address = null;
