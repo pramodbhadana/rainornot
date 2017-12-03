@@ -65,5 +65,11 @@
             android:layout_gravity="bottom|end"
             android:layout_margin="@dimen/fab_margin"
             android:src="@android:drawable/ic_input_add" />
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="70dp"
+            android:id="@+id/powered_by_dark_sky"
+            android:src="@drawable/powered_by_darksky_light"
+            android:layout_gravity="bottom"/>
     </android.support.design.widget.CoordinatorLayout>
 </LinearLayout>

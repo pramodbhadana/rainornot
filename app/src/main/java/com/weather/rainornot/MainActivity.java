@@ -19,6 +19,7 @@ import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.SearchView;
+import android.util.DisplayMetrics;
 import android.view.Menu;
 import android.view.View;
 import android.widget.ImageView;
@@ -186,6 +187,16 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 }
             });
         }
+
+        DisplayMetrics displaymetrics = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
+        int width = displaymetrics.widthPixels;
+
+        FloatingActionButton floatingActionButton = (FloatingActionButton) findViewById(R.id.fab);
+        int widthFloatingButton = floatingActionButton.getLayoutParams().width;
+
+        ImageView imageViewForDarkSky = (ImageView) findViewById(R.id.powered_by_dark_sky);
+        imageViewForDarkSky.getLayoutParams().width = width - widthFloatingButton - 30;
 
     }
 
