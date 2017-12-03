@@ -47,7 +47,7 @@ dependencies {
 //return a MY API KEY from a properties file.
 def getApiKey(String property){
     Properties properties = new Properties()
-    properties.load(new FileInputStream("/Users/pramodbhadana/AndroidStudioProjects/RainOrNot/privateKeys.txt"))
+    properties.load(new FileInputStream("app/src/main/assets/privateKeys.txt"))
     return "\"" + properties.getProperty(property) +"\""
 }
 

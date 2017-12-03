@@ -85,7 +85,4 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
-#privatekeys
-*.txt
-
 # End of https://www.gitignore.io/api/macos,android

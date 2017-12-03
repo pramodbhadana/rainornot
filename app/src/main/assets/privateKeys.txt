@@ -1,0 +1,2 @@
+dark_sky_key = add_your_darksky_key_here
+google_geo_api_key = add_your_googlegeo_api_key_here
