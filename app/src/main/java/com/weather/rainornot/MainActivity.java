@@ -1,29 +1,43 @@
 package com.weather.rainornot;
 
 import android.app.SearchManager;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.NavigationView;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.view.GravityCompat;
+import android.support.v4.widget.DrawerLayout;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.ActionBar;
+import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.SearchView;
+import android.support.v7.widget.Toolbar;
 import android.util.DisplayMetrics;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
+import android.widget.BaseAdapter;
+import android.widget.HeaderViewListAdapter;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.Toast;
 import android.util.Log;
 
@@ -39,24 +53,35 @@ import com.google.android.gms.common.GooglePlayServicesRepairableException;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.places.AutocompleteFilter;
 import com.google.android.gms.location.places.Place;
 import com.google.android.gms.location.places.ui.PlaceAutocomplete;
 import com.google.android.gms.maps.model.LatLng;
+import com.weather.rainornot.utils.CityInfoDbHelper;
+import com.weather.rainornot.utils.CityInfoHelper;
 import com.weather.rainornot.utils.weatherSIUnits;
+import com.weather.rainornot.utils.CityInfoContract.CityEntry;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
+
+import static java.lang.Math.atan2;
+import static java.lang.Math.cos;
+import static java.lang.Math.sin;
+import static java.lang.Math.sqrt;
 
 
 public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener {
 
     private static final int PLACE_AUTOCOMPLETE_REQUEST_CODE = 1;
+    private static final float DISTANCE_BETWEEN_CITIES = 10;
     private GoogleApiClient mGoogleApiClient;
     private Location mLastLocation;
     private double mLatitude = 0;
@@ -83,17 +108,29 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
     private ImageView mWeatherIconImageView;
 
-    private LinearLayout mainLinearLayout;
+    //private LinearLayout mainLinearLayout;
     private LinearLayout mWeatherImageLinearLayout;
 
     private SwipeRefreshLayout swipeRefreshLayout;
 
     private LottieAnimationView lottieAnimationView;
 
+    private Toolbar toolbar;
+
+    private DrawerLayout drawerLayout;
+
+    private ActionBarDrawerToggle actionBarDrawerToggle;
+
     private static final int LOCATION_REQUEST_ID = 0;
 
     private Menu menu;
 
+    private int i;
+
+    private NavigationView navigationView;
+    private CityInfoDbHelper mCityInfoDbHelper;
+    private List<CityInfoHelper> cityInfoHelperList;
+    private static Double RadiusOfEarth = 6371.0;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -117,9 +154,44 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
         mWeatherIconImageView = (ImageView) findViewById(R.id.weatherIconImageView);
 
-        mainLinearLayout = (LinearLayout) findViewById(R.id.mainLinearLayout);
+        //mainLinearLayout = (LinearLayout) findViewById(R.id.mainLinearLayout);
 
         swipeRefreshLayout = (SwipeRefreshLayout) findViewById(R.id.swiperefresh);
+
+        toolbar = (Toolbar) findViewById(R.id.toolbar);
+
+        drawerLayout = (DrawerLayout) findViewById(R.id.drawerLayout);
+
+        actionBarDrawerToggle = new ActionBarDrawerToggle(this,drawerLayout,R.string.app_name,R.string.app_name);
+
+        drawerLayout.addDrawerListener(actionBarDrawerToggle);
+
+        navigationView = (NavigationView) findViewById(R.id.navigation_view);
+
+        navigationView.setNavigationItemSelectedListener(new NavigationView.OnNavigationItemSelectedListener() {
+            @Override
+            public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+                int size = navigationView.getMenu().size();
+                for (int i = 0; i < size; i++) {
+                    navigationView.getMenu().getItem(i).setChecked(false);
+                }
+                item.setChecked(true);
+                drawerLayout.closeDrawers();
+                LogIt("Item Id is :"+item.getItemId() + " total items in cityHelperList : "+cityInfoHelperList.size());
+                LogIt("Here is the cityInfoList");
+                for(int i=0;i<cityInfoHelperList.size();i++)
+                {
+                    LogIt("Index : "+i+" "+cityInfoHelperList.get(i).getCityName());
+                }
+                mLatitude = cityInfoHelperList.get(item.getItemId()).getLatitude();
+                mLongitude = cityInfoHelperList.get(item.getItemId()).getLongitude();
+                address = getAddress(mLatitude,mLongitude);
+                fetchWeatherInformation();
+                return false;
+            }
+        });
+
+        mCityInfoDbHelper = new CityInfoDbHelper(getApplicationContext());
 
         swipeRefreshLayout.setOnRefreshListener(
                 new SwipeRefreshLayout.OnRefreshListener() {
@@ -129,6 +201,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
                         // This method performs the actual data-refresh operation.
                         // The method calls setRefreshing(false) when it's finished.
+                        address = getAddress(mLatitude,mLongitude);
                         fetchWeatherInformation();
                     }
                 }
@@ -170,9 +243,13 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 }
         );
 
+        setSupportActionBar(toolbar);
+
         mActionBar = getSupportActionBar();
         //hiding app name from the action bar
         if(mActionBar != null) {
+            mActionBar.setHomeButtonEnabled(true);
+            mActionBar.setDisplayHomeAsUpEnabled(true);
             mActionBar.setDisplayShowTitleEnabled(false);
         }
 
@@ -188,6 +265,10 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             });
         }
 
+        cityInfoHelperList = new ArrayList<CityInfoHelper>();
+
+        updateCitiesInDrawer(true);
+
         DisplayMetrics displaymetrics = new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
         int width = displaymetrics.widthPixels;
@@ -198,6 +279,29 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         ImageView imageViewForDarkSky = (ImageView) findViewById(R.id.powered_by_dark_sky);
         imageViewForDarkSky.getLayoutParams().width = width - widthFloatingButton - 30;
 
+    }
+
+    @Override
+    public void onPostCreate(Bundle savedInstanceState) {
+        super.onPostCreate(savedInstanceState);
+        if(actionBarDrawerToggle != null)
+        actionBarDrawerToggle.syncState();
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        actionBarDrawerToggle.onConfigurationChanged(newConfig);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case android.R.id.home:
+                drawerLayout.openDrawer(GravityCompat.START);  // OPEN DRAWER
+                return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     @Override
@@ -215,7 +319,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 }
                 else
                 {
-                    showToast("Permission Denied","short");
+                    showToast("Permission Denied, Add a place manually","short");
 
                     //launch application without location support
                     //insert code for selecting location manually by searching through predefined cities
@@ -256,6 +360,10 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             {
                 mLatitude = mLastLocation.getLatitude();
                 mLongitude = mLastLocation.getLongitude();
+                address = getAddress(mLatitude,mLongitude);
+                if(newCity(mLatitude,mLongitude)) {
+                    updateDatabaseAndDrawer();
+                }
                 fetchWeatherInformation();
             }
             else
@@ -269,7 +377,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         else
         {
             LogIt("App does not have location permission");
-            showToast(getResources().getString(R.string.noLocationPermission),"short");
             // permission to access location is not available
             if(ActivityCompat.shouldShowRequestPermissionRationale(this,"android.permission.ACCESS_COARSE_LOCATION"))
             {
@@ -346,7 +453,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
      */
     public void LogIt(String messageToBeLogged)
     {
-
+        if(messageToBeLogged != null)
         Log.d(TAG,messageToBeLogged);
     }
 
@@ -406,7 +513,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         {
             ConnectionHandler connectionHandler = new ConnectionHandler();
             String weatherInfo = connectionHandler.makeServiceCall(weatherUrl[0]); //considering only first Url
-            Log.e(TAG,"weatherInfo is extracted : "+weatherInfo);
+            //Log.e(TAG,"weatherInfo is extracted : "+weatherInfo);
             if(weatherInfo != null) {
                 try {
                     JSONObject weatherInfoObject = new JSONObject(weatherInfo);
@@ -441,10 +548,9 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                     ozone = currentWeatherObject.get("ozone");
                     */
 
-                    String addressInternal = getAddress();
-                    //showToast("here is the address "+address,"long");   **don't show toast from Async task. Context value won't be there
-                    address = addressInternal;
-                    LogIt(address);
+
+                    //cityList[i++] = address;
+                    //LogIt(address);
 
                 } catch (JSONException e) {
                     jsonError = true;
@@ -590,19 +696,22 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         return true;
     }
 
-    String getAddress()
+    String getAddress(Double latitude, Double longitude)
     {
         StringBuilder result = new StringBuilder();
         try
         {
             Geocoder geocoder = new Geocoder(this, Locale.getDefault());
-            List<Address> addresses = geocoder.getFromLocation(mLatitude,mLongitude,1);
+            List<Address> addresses = geocoder.getFromLocation(latitude,longitude,1);
             if(addresses.size() > 0)
             {
                 Address address = addresses.get(0);
-                result.append(address.getLocality()).append(", ");
-                result.append(address.getAdminArea()).append(", ");
-                result.append(address.getCountryName());
+                if(address.getLocality() != null)
+                    result.append(address.getLocality()).append(", ");
+                if(address.getAdminArea() != null)
+                    result.append(address.getAdminArea()).append(", ");
+                if(address.getCountryName() != null)
+                    result.append(address.getCountryName());
             }
         }
         catch (IOException e)
@@ -613,6 +722,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         {
             LogIt("Fetching Address, :"+e.getMessage());
         }
+        LogIt("Address Fetched :"+result);
         return result.toString();
     }
 
@@ -625,8 +735,12 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     }
     private void callPlaceSearchIntent() {
         try {
+            AutocompleteFilter autocompleteFilter = new AutocompleteFilter.Builder()
+                    .setTypeFilter(AutocompleteFilter.TYPE_FILTER_CITIES)
+                    .build();
             Intent intent =
                     new PlaceAutocomplete.IntentBuilder(PlaceAutocomplete.MODE_FULLSCREEN)
+                            .setFilter(autocompleteFilter)
                             .build(this);
             startActivityForResult(intent, PLACE_AUTOCOMPLETE_REQUEST_CODE);
         } catch (GooglePlayServicesRepairableException | GooglePlayServicesNotAvailableException e) {
@@ -646,7 +760,9 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 Log.i(TAG, "Place:" + place.toString());
                 mLatitude = mLatLng.latitude;
                 mLongitude = mLatLng.longitude;
+                address = getAddress(mLatLng.latitude,mLatLng.longitude);
                 fetchWeatherInformation();
+                updateDatabaseAndDrawer();
             } else if (resultCode == PlaceAutocomplete.RESULT_ERROR) {
                 Status status = PlaceAutocomplete.getStatus(this, data);
                 Log.i(TAG, status.getStatusMessage());
@@ -654,6 +770,123 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 Log.i(TAG, "Request cancelled by User");
             }
         }
+    }
+    void enterDataIntoDatabase(String place, double latitude, double longitude, int accessed, String placeId)
+    {
+        if(!newCity(latitude,longitude))
+        {
+            LogIt("not a new city");
+            return ;
+        }
+        SQLiteDatabase db = mCityInfoDbHelper.getWritableDatabase();
+
+        ContentValues values = new ContentValues();
+        values.put(CityEntry.COLUMN_NAME_TITLE,place);
+        values.put(CityEntry.COLUMN_NAME_LATITUDE,latitude);
+        values.put(CityEntry.COLUMN_NAME_LONGITUDE,longitude);
+        values.put(CityEntry.COLUMN_NAME_ACCESSED,accessed);
+        values.put(CityEntry.COLUMN_NAME_PLACEID,placeId);
+
+        long newRowId = db.insert(CityEntry.TABLE_NAME,null,values);
+
+        LogIt("Database accessed with newRowId : " + newRowId);
+    }
+
+    void updateCitiesInDrawer(boolean init)
+    {
+        menu = navigationView.getMenu();
+//        for(int j=0;j<i;j++) {
+//            menu.add(cityList[j]);
+//        }
+
+
+        SQLiteDatabase db = mCityInfoDbHelper.getReadableDatabase();
+        String[] projection = {
+                CityEntry._ID,
+                CityEntry.COLUMN_NAME_TITLE,
+                CityEntry.COLUMN_NAME_LATITUDE,
+                CityEntry.COLUMN_NAME_LONGITUDE
+        };
+
+        String order = init ? "ASC" : "DESC" ;      //if initializing on activity create then demand
+        //enteries in ascending order, otherwise just demand the last element from the db and add this
+        // element to other list, remember no of elements asked for are different when initializing and
+        // adding a new city
+        String sortOrder = CityEntry._ID + " "+order;
+
+        String limit = init ? null:"1";
+
+        if(init)
+            cityInfoHelperList.clear();
+
+        Cursor cursor = db.query(
+                CityEntry.TABLE_NAME,
+                projection,
+                null,
+                null,
+                null,
+                null,
+                sortOrder,
+                limit
+        );
+        //menu.add(cityList[i - 1]);
+        while(cursor.moveToNext()) {
+            menu.add(1,cityInfoHelperList.size(),
+                    cityInfoHelperList.size(),
+                    cursor.getString(cursor.getColumnIndexOrThrow(CityEntry.COLUMN_NAME_TITLE)));
+            CityInfoHelper cityInfoHelper = new CityInfoHelper( cursor.getString(cursor.getColumnIndexOrThrow(CityEntry.COLUMN_NAME_TITLE)),
+                    cursor.getDouble(cursor.getColumnIndexOrThrow(CityEntry.COLUMN_NAME_LATITUDE)),
+                    cursor.getDouble(cursor.getColumnIndexOrThrow(CityEntry.COLUMN_NAME_LONGITUDE)));
+            cityInfoHelperList.add(cityInfoHelper);
+        }
+        cursor.close();
+
+        for (int i = 0, count = navigationView.getChildCount(); i < count; i++) {
+            final View child = navigationView.getChildAt(i);
+            if (child != null && child instanceof ListView) {
+                final ListView menuView = (ListView) child;
+                final HeaderViewListAdapter adapter = (HeaderViewListAdapter) menuView.getAdapter();
+                final BaseAdapter wrapped = (BaseAdapter) adapter.getWrappedAdapter();
+                wrapped.notifyDataSetChanged();
+            }
+        }
+    }
+
+    @Override
+    protected void onDestroy()
+    {
+        mCityInfoDbHelper.close();
+        super.onDestroy();
+    }
+
+    void updateDatabaseAndDrawer()
+    {
+        enterDataIntoDatabase(address,mLatitude,mLongitude,0,"NA");
+        updateCitiesInDrawer(false);
+    }
+
+    boolean newCity(Double latitude, Double longitude)
+    {
+        boolean newCity = true;
+        for(int i=0;i<cityInfoHelperList.size();i++)
+        {
+            String cityName = cityInfoHelperList.get(i).getCityName();
+            Double cityLatitude = cityInfoHelperList.get(i).getLatitude();
+            Double cityLongitude  = cityInfoHelperList.get(i).getLongitude();
+            Double dlon = cityLongitude - longitude;
+            Double dlat = cityLatitude - latitude;
+            Double a = (sin(dlat/2)*sin(dlat/2)) + cos(cityLatitude) * cos(latitude) * (sin(dlon/2)*sin(dlon/2));
+            Double c = 2 * atan2( sqrt(a), sqrt(1-a) );
+            Double distance = RadiusOfEarth * c;
+            if(distance < DISTANCE_BETWEEN_CITIES)
+            {
+                LogIt("city "+cityName+" distance "+distance);
+                newCity = false;
+            }
+        }
+        return newCity;
+
+
     }
 
 }

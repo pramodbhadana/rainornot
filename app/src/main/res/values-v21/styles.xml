@@ -1,21 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-
-    <!-- Base application theme. -->
-    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
-        <!-- Customize your theme here. -->
-        <item name="colorPrimary">@color/colorPrimary</item>
-        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-        <item name="colorAccent">@color/colorAccent</item>
-        <item name="windowActionBar">false</item>
-        <item name="windowNoTitle">true</item>
-    </style>
     <style name="CustomTransparentAppBarLayout" parent="Base.Widget.Design.AppBarLayout">
         <item name="android:background">@android:color/transparent</item>
         <item name="android:theme">@style/ThemeOverlay.AppCompat.Dark.ActionBar</item>
     </style>
     <style name="customTransparentToolbar" parent="Widget.AppCompat.Toolbar">
-        <item name="android:background">@android:color/transparent</item>
         <item name="android:theme">@style/ThemeOverlay.AppCompat.Dark.ActionBar</item>
+        <item name="android:popupTheme">@style/ThemeOverlay.AppCompat.Light</item>
+        <item name="android:background">@android:color/transparent</item>
         <item name="android:textColorPrimary">@android:color/black</item>
         <item name="android:textColorSecondary">@android:color/black</item>
         <item name="actionMenuTextColor">@android:color/black</item>
@@ -25,5 +17,4 @@
         <item name="spinBars">true</item>
         <item name="color">@android:color/white</item>
     </style>
-
 </resources>
