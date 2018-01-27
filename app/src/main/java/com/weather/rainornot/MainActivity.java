@@ -59,6 +59,7 @@ import com.google.android.gms.location.places.ui.PlaceAutocomplete;
 import com.google.android.gms.maps.model.LatLng;
 import com.weather.rainornot.utils.CityInfoDbHelper;
 import com.weather.rainornot.utils.CityInfoHelper;
+import com.weather.rainornot.utils.SharedPreferenceUtil;
 import com.weather.rainornot.utils.weatherSIUnits;
 import com.weather.rainornot.utils.CityInfoContract.CityEntry;
 
@@ -71,17 +72,11 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 
-import static java.lang.Math.atan2;
-import static java.lang.Math.cos;
-import static java.lang.Math.sin;
-import static java.lang.Math.sqrt;
-
-
 public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener {
 
     private static final int PLACE_AUTOCOMPLETE_REQUEST_CODE = 1;
-    private static final float DISTANCE_BETWEEN_CITIES = 10;
+    private static final float DISTANCE_BETWEEN_CITIES = 10000;
     private GoogleApiClient mGoogleApiClient;
     private Location mLastLocation;
     private double mLatitude = 0;
@@ -130,7 +125,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private NavigationView navigationView;
     private CityInfoDbHelper mCityInfoDbHelper;
     private List<CityInfoHelper> cityInfoHelperList;
-    private static Double RadiusOfEarth = 6371.0;
+    private SharedPreferenceUtil sharedPreferenceUtil;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -168,14 +164,16 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
         navigationView = (NavigationView) findViewById(R.id.navigation_view);
 
+        if(sharedPreferenceUtil == null)
+        {
+            sharedPreferenceUtil = SharedPreferenceUtil.getInstance(getApplicationContext());
+        }
+
         navigationView.setNavigationItemSelectedListener(new NavigationView.OnNavigationItemSelectedListener() {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-                int size = navigationView.getMenu().size();
-                for (int i = 0; i < size; i++) {
-                    navigationView.getMenu().getItem(i).setChecked(false);
-                }
-                item.setChecked(true);
+                setMenuItemChecked(item.getItemId());
+                sharedPreferenceUtil.setLastPlace(item.getItemId());
                 drawerLayout.closeDrawers();
                 LogIt("Item Id is :"+item.getItemId() + " total items in cityHelperList : "+cityInfoHelperList.size());
                 LogIt("Here is the cityInfoList");
@@ -320,7 +318,12 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 else
                 {
                     showToast("Permission Denied, Add a place manually","short");
-
+                    int lastPlace = sharedPreferenceUtil.getLastPlace();
+                    mLatitude = cityInfoHelperList.get(lastPlace).getLatitude();
+                    mLongitude = cityInfoHelperList.get(lastPlace).getLongitude();
+                    address = getAddress(mLatitude,mLongitude);
+                    setMenuItemChecked(lastPlace);
+                    fetchWeatherInformation();
                     //launch application without location support
                     //insert code for selecting location manually by searching through predefined cities
                 }
@@ -361,10 +364,11 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 mLatitude = mLastLocation.getLatitude();
                 mLongitude = mLastLocation.getLongitude();
                 address = getAddress(mLatitude,mLongitude);
-                if(newCity(mLatitude,mLongitude)) {
+                if(nearestPlace(mLatitude,mLongitude) == -1) {
                     updateDatabaseAndDrawer();
                 }
                 fetchWeatherInformation();
+                setMenuItemChecked(nearestPlace(mLatitude,mLongitude));
             }
             else
             {
@@ -760,9 +764,13 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 Log.i(TAG, "Place:" + place.toString());
                 mLatitude = mLatLng.latitude;
                 mLongitude = mLatLng.longitude;
+                int lastPlace = cityInfoHelperList.size();
+                sharedPreferenceUtil.setLastPlace(lastPlace);
                 address = getAddress(mLatLng.latitude,mLatLng.longitude);
                 fetchWeatherInformation();
-                updateDatabaseAndDrawer();
+                if(nearestPlace(mLatitude,mLongitude) == -1) {
+                    updateDatabaseAndDrawer();
+                }
             } else if (resultCode == PlaceAutocomplete.RESULT_ERROR) {
                 Status status = PlaceAutocomplete.getStatus(this, data);
                 Log.i(TAG, status.getStatusMessage());
@@ -773,11 +781,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     }
     void enterDataIntoDatabase(String place, double latitude, double longitude, int accessed, String placeId)
     {
-        if(!newCity(latitude,longitude))
-        {
-            LogIt("not a new city");
-            return ;
-        }
         SQLiteDatabase db = mCityInfoDbHelper.getWritableDatabase();
 
         ContentValues values = new ContentValues();
@@ -838,6 +841,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                     cursor.getDouble(cursor.getColumnIndexOrThrow(CityEntry.COLUMN_NAME_LATITUDE)),
                     cursor.getDouble(cursor.getColumnIndexOrThrow(CityEntry.COLUMN_NAME_LONGITUDE)));
             cityInfoHelperList.add(cityInfoHelper);
+            if(!init)
+                setMenuItemChecked(cityInfoHelperList.size()-1);
         }
         cursor.close();
 
@@ -855,7 +860,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     @Override
     protected void onDestroy()
     {
-        mCityInfoDbHelper.close();
+        if(mCityInfoDbHelper != null)
+            mCityInfoDbHelper.close();
         super.onDestroy();
     }
 
@@ -865,28 +871,41 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         updateCitiesInDrawer(false);
     }
 
-    boolean newCity(Double latitude, Double longitude)
+    int nearestPlace(Double latitude, Double longitude)
     {
-        boolean newCity = true;
+        int nearestPlaceDistance = Integer.MAX_VALUE;
+        int nearestPlace = -1;
+        float results[] = new float[4];
         for(int i=0;i<cityInfoHelperList.size();i++)
         {
             String cityName = cityInfoHelperList.get(i).getCityName();
             Double cityLatitude = cityInfoHelperList.get(i).getLatitude();
             Double cityLongitude  = cityInfoHelperList.get(i).getLongitude();
-            Double dlon = cityLongitude - longitude;
-            Double dlat = cityLatitude - latitude;
-            Double a = (sin(dlat/2)*sin(dlat/2)) + cos(cityLatitude) * cos(latitude) * (sin(dlon/2)*sin(dlon/2));
-            Double c = 2 * atan2( sqrt(a), sqrt(1-a) );
-            Double distance = RadiusOfEarth * c;
+
+            android.location.Location.distanceBetween(latitude,longitude,cityLatitude,cityLongitude,results);
+
+            float distance = results[0];
+
             if(distance < DISTANCE_BETWEEN_CITIES)
             {
                 LogIt("city "+cityName+" distance "+distance);
-                newCity = false;
+                if(nearestPlaceDistance > distance)
+                {
+                    nearestPlace = i;
+                }
             }
         }
-        return newCity;
+        return nearestPlace;
+    }
 
-
+    void setMenuItemChecked(int itemId)
+    {
+        Menu menu = navigationView.getMenu();
+        LogIt("size of menu"+menu.size());
+        for(int i = 0;i<menu.size();i++) {
+            menu.getItem(i).setChecked(false);
+        }
+        menu.getItem(itemId+1).setChecked(true); // because there is one item already added in XML
     }
 
 }
